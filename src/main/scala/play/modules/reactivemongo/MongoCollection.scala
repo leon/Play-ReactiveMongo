@@ -21,6 +21,7 @@ import play.modules.reactivemongo.json.collection.{ JSONQueryBuilder, JSONGeneri
 import reactivemongo.api.collections.{ GenericQueryBuilder, GenericCollection }
 import play.api.libs.json.Json.JsValueWrapper
 import scala.reflect.ClassTag
+import play.api.Application
 
 // Reactive Mongo imports
 import reactivemongo.api._
@@ -33,9 +34,10 @@ import play.modules.reactivemongo.json.BSONFormats.BSONObjectIDFormat
 // Play Json imports
 import play.api.libs.json._
 
-import play.api.Play.current
-
 class MongoCollection[T: ClassTag] extends GenericCollection[JsObject, Reads, Writes] with JSONGenericHandlers with CollectionMetaCommands {
+
+  implicit private def playApp: Application = play.api.Play.current
+  implicit private def ec: ExecutionContext = ExecutionContext.Implicits.global
 
   private def getNameFromClass(implicit ct: ClassTag[T]) = ct.runtimeClass.getSimpleName.toLowerCase + "s"
   def name: String = getNameFromClass
@@ -45,8 +47,6 @@ class MongoCollection[T: ClassTag] extends GenericCollection[JsObject, Reads, Wr
   def genericQueryBuilder: GenericQueryBuilder[JsObject, Reads, Writes] = JSONQueryBuilder(this, failoverStrategy)
 
   private val ID = "_id"
-
-  implicit private def ec: ExecutionContext = ExecutionContext.Implicits.global
 
   // Not shure this is a good idea, because it doesn't work when named to find, clashes with the existing find method
   def query(query: (String, JsValueWrapper)*)(implicit ec: ExecutionContext, format: Format[T]): Future[List[T]] = find(Json.obj(query: _*)).cursor[T].toList
@@ -73,10 +73,10 @@ class MongoCollection[T: ClassTag] extends GenericCollection[JsObject, Reads, Wr
   def save(doc: JsObject, writeConcern: GetLastError)(implicit ec: ExecutionContext): Future[LastError] = {
     import reactivemongo.bson._
     import play.modules.reactivemongo.json.BSONFormats
-    (doc \ "_id" match {
+    doc \ "_id" match {
       case JsUndefined(_) => insert(doc + ("_id" -> BSONFormats.BSONObjectIDFormat.writes(BSONObjectID.generate)), writeConcern)
       case id             => update(Json.obj("_id" -> id), doc, writeConcern, upsert = true)
-    })
+    }
   }
   def save(model: T, writeConcern: GetLastError = GetLastError())(implicit ec: ExecutionContext, writer: Writes[T]): Future[LastError] = {
     save(writer.writes(model).as[JsObject], writeConcern)

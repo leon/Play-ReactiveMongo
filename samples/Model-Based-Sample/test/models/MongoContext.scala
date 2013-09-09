@@ -1,19 +1,25 @@
 package models
 
-import org.specs2.specification.Around
+import org.specs2.mutable.Around
 import org.specs2.execute.{AsResult, Result}
+import org.specs2.specification.Scope
 import play.api.test._
-import play.api.test.Helpers._
+import play.api.test.FakeApplication
 import scala.concurrent.duration._
-import play.api.Configuration
-import com.typesafe.config.Config
+import scala.concurrent.ExecutionContext
 
-class MongoContext(val app: FakeApplication = new FakeApplication(
-  configuration = new Config() .new java.io.File("conf/test.conf"),
-  additionalPlugins = Seq("play.modules.reactivemongo.ReactiveMongoPlugin")
-)) extends Around {
+trait MongoContext extends Around with Scope {
 
-  override def around[T: AsResult](t: => T): Result = Helpers.running(app)(AsResult(t))
+  implicit lazy val app: FakeApplication = new FakeApplication(
+    additionalConfiguration = Map(
+      ("mongodb.uri" -> "mongodb://localhost:27017/reactivetest")
+    )
+  )
+  implicit def timeout = 5.seconds
+  implicit def ec = ExecutionContext.Implicits.global
 
-  val timeout = 5.seconds
+  override def around[T: AsResult](t: => T): Result = {
+    Helpers.running(app)(AsResult.effectively(t))
+  }
+
 }

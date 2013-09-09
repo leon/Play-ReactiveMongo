@@ -2,24 +2,18 @@ package models
 
 import org.specs2.mutable._
 import play.api.libs.iteratee._
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
-import play.modules.reactivemongo.MongoCollection
 import reactivemongo.bson.BSONObjectID
 import scala.concurrent._
-import com.github.athieriot.EmbedConnection
+import java.util.concurrent.TimeUnit
+import play.api.test.WithApplication
 
-class PostsSpec extends Specification with EmbedConnection {
-
-  implicit val ctx = new MongoContext
-
-  import scala.concurrent.ExecutionContext.Implicits.global
+class PostsSpec extends Specification {
 
   sequential
 
   "PostsSpec" should {
 
-    "Create posts" in {
+    "Create posts" in new MongoContext {
       import Post._
 
       val userId = BSONObjectID.generate
@@ -30,12 +24,13 @@ class PostsSpec extends Specification with EmbedConnection {
         Post(userId, "This post is inactive", "I'm inactive", active = false)
       )
 
-      val inserted = Await.result(Post.collection.bulkInsert(Enumerator.enumerate(posts)), ctx.timeout)
+      val inserted = Await.result(Post.collection.bulkInsert(Enumerator.enumerate(posts)), timeout)
       inserted must beEqualTo(3)
     }
 
-    "Query for active posts" in {
-      val activePosts = Await.result(Post.collection.query("active" -> true), ctx.timeout)
+    "Query for active posts" in new MongoContext {
+
+      val activePosts = Await.result(Post.collection.query("active" -> true), timeout)
       activePosts.size must beEqualTo(2)
     }
   }

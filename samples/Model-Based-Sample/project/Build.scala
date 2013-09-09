@@ -9,11 +9,13 @@ object ApplicationBuild extends Build {
 
   val appDependencies = Seq(
     "org.reactivemongo" %% "play2-reactivemongo" % "0.10-SNAPSHOT",
-    "com.github.athieriot" %% "specs2-embedmongo" % "0.5.1" % "test"
+    "org.specs2" %% "specs2" % "2.2" % "test",
+    "de.flapdoodle.embed" % "de.flapdoodle.embed.mongo" % "1.36" % "test"
   )
 
   val main = play.Project(appName, appVersion, appDependencies).settings(
     scalacOptions ++= Seq("-unchecked", "-deprecation","-feature"),
+    scalacOptions in Test ++= Seq("-Yrangepos"),
     resolvers += Resolver.file("Local repo", file("/Users/leon/.ivy2/local"))(Resolver.ivyStylePatterns)
   )
 
